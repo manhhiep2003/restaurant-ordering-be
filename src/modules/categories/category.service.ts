@@ -2,15 +2,19 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Category } from '@prisma/client';
 import { QueryPaginationDto } from 'src/common/dtos/query-pagination.dto';
 import { PaginateOutput, paginate, paginateOutput } from 'src/common/utils/pagination.util';
-import { CreateCategoryRequestDto } from 'src/modules/categories/dtos/create-category.request.dto';
-import { UpdateCategoryRequestDto } from 'src/modules/categories/dtos/update-category.request.dto';
+import { CreateCategoryRequestDto } from 'src/modules/categories/dtos/request/create-category.request.dto';
+import { UpdateCategoryRequestDto } from 'src/modules/categories/dtos/request/update-category.request.dto';
+import { CategotyResponseDto } from 'src/modules/categories/dtos/response/category.response.dto';
+import { CategoryMapper } from 'src/modules/categories/mappers/category.mapper';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CategoryService {
   constructor(private prismaService: PrismaService) {}
 
-  async getAllCategories(query: QueryPaginationDto = {}): Promise<PaginateOutput<Category>> {
+  async getAllCategories(
+    query: QueryPaginationDto = {},
+  ): Promise<PaginateOutput<CategotyResponseDto>> {
     const [categories, total] = await Promise.all([
       this.prismaService.category.findMany({
         ...paginate(query),
@@ -18,10 +22,10 @@ export class CategoryService {
       this.prismaService.category.count(),
     ]);
 
-    return paginateOutput<Category>(categories, total, query);
+    return paginateOutput<Category>(CategoryMapper.toResponses(categories), total, query);
   }
 
-  async getCategoryById(id: string): Promise<Category> {
+  async getCategoryById(id: string): Promise<CategotyResponseDto> {
     const category = await this.prismaService.category.findUnique({
       where: { id },
     });
@@ -30,10 +34,10 @@ export class CategoryService {
       throw new NotFoundException('Category not found');
     }
 
-    return category;
+    return CategoryMapper.toResponse(category);
   }
 
-  async createCategory(data: CreateCategoryRequestDto): Promise<Category> {
+  async createCategory(data: CreateCategoryRequestDto): Promise<CategotyResponseDto> {
     const existed = await this.prismaService.category.findFirst({
       where: {
         name: data.name,
@@ -44,12 +48,14 @@ export class CategoryService {
       throw new ConflictException('Category already exists');
     }
 
-    return this.prismaService.category.create({
+    const category = await this.prismaService.category.create({
       data,
     });
+
+    return CategoryMapper.toResponse(category);
   }
 
-  async updateCategory(id: string, data: UpdateCategoryRequestDto): Promise<Category> {
+  async updateCategory(id: string, data: UpdateCategoryRequestDto): Promise<CategotyResponseDto> {
     await this.getCategoryById(id);
 
     if (data.name && typeof data.name === 'string') {
@@ -67,10 +73,12 @@ export class CategoryService {
       }
     }
 
-    return this.prismaService.category.update({
+    const updatedCategory = await this.prismaService.category.update({
       where: { id },
       data,
     });
+
+    return CategoryMapper.toResponse(updatedCategory);
   }
 
   async deleteCategory(id: string): Promise<void> {
