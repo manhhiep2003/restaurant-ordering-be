@@ -6,18 +6,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
-
-  // async getAllUsers(): Promise<User[]> {
-  //   return await this.prisma.user.findMany();
-  // }
+  constructor(private prismaService: PrismaService) {}
 
   async getAllUsers(query: QueryPaginationDto = {}): Promise<PaginateOutput<User>> {
     const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
+      this.prismaService.user.findMany({
         ...paginate(query),
       }),
-      this.prisma.user.count(),
+      this.prismaService.user.count(),
     ]);
 
     return paginateOutput<User>(users, total, query);
