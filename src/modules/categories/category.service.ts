@@ -4,7 +4,7 @@ import { QueryPaginationDto } from 'src/common/dtos/query-pagination.dto';
 import { PaginateOutput, paginate, paginateOutput } from 'src/common/utils/pagination.util';
 import { CreateCategoryRequestDto } from 'src/modules/categories/dtos/request/create-category.request.dto';
 import { UpdateCategoryRequestDto } from 'src/modules/categories/dtos/request/update-category.request.dto';
-import { CategotyResponseDto } from 'src/modules/categories/dtos/response/category.response.dto';
+import { CategoryResponseDto } from 'src/modules/categories/dtos/response/category.response.dto';
 import { CategoryMapper } from 'src/modules/categories/mappers/category.mapper';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -14,7 +14,7 @@ export class CategoryService {
 
   async getAllCategories(
     query: QueryPaginationDto = {},
-  ): Promise<PaginateOutput<CategotyResponseDto>> {
+  ): Promise<PaginateOutput<CategoryResponseDto>> {
     const [categories, total] = await Promise.all([
       this.prismaService.category.findMany({
         ...paginate(query),
@@ -25,7 +25,7 @@ export class CategoryService {
     return paginateOutput<Category>(CategoryMapper.toResponses(categories), total, query);
   }
 
-  async getCategoryById(id: string): Promise<CategotyResponseDto> {
+  async getCategoryById(id: string): Promise<CategoryResponseDto> {
     const category = await this.prismaService.category.findUnique({
       where: { id },
     });
@@ -37,7 +37,7 @@ export class CategoryService {
     return CategoryMapper.toResponse(category);
   }
 
-  async createCategory(data: CreateCategoryRequestDto): Promise<CategotyResponseDto> {
+  async createCategory(data: CreateCategoryRequestDto): Promise<CategoryResponseDto> {
     const existed = await this.prismaService.category.findFirst({
       where: {
         name: data.name,
@@ -55,7 +55,7 @@ export class CategoryService {
     return CategoryMapper.toResponse(category);
   }
 
-  async updateCategory(id: string, data: UpdateCategoryRequestDto): Promise<CategotyResponseDto> {
+  async updateCategory(id: string, data: UpdateCategoryRequestDto): Promise<CategoryResponseDto> {
     await this.getCategoryById(id);
 
     if (data.name && typeof data.name === 'string') {

@@ -1,10 +1,8 @@
 import { ApiResponseProperty } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
+import { BaseResponseDto } from 'src/common/dtos/base-response.dto';
 
-export class ProductResponseDto {
-  @ApiResponseProperty()
-  id: string;
-
+export class ProductResponseDto extends BaseResponseDto {
   @ApiResponseProperty()
   categoryId: string;
 
@@ -19,10 +17,4 @@ export class ProductResponseDto {
 
   @ApiResponseProperty()
   isAvailable: boolean;
-
-  @ApiResponseProperty()
-  createdAt: Date;
-
-  @ApiResponseProperty()
-  updatedAt: Date | null;
 }

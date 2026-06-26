@@ -1,11 +1,8 @@
 import { ApiResponseProperty } from '@nestjs/swagger';
 
-export class CategoryResponseDto {
+export abstract class BaseResponseDto {
   @ApiResponseProperty()
   id: string;
-
-  @ApiResponseProperty()
-  name: string;
 
   @ApiResponseProperty()
   createdAt: Date;

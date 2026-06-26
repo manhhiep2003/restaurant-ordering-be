@@ -18,7 +18,7 @@ import { PaginateOutput } from 'src/common/utils/pagination.util';
 import { CategoryService } from 'src/modules/categories/category.service';
 import { CreateCategoryRequestDto } from 'src/modules/categories/dtos/request/create-category.request.dto';
 import { UpdateCategoryRequestDto } from 'src/modules/categories/dtos/request/update-category.request.dto';
-import { CategotyResponseDto } from 'src/modules/categories/dtos/response/category.response.dto';
+import { CategoryResponseDto } from 'src/modules/categories/dtos/response/category.response.dto';
 
 @ApiBearerAuth()
 @Controller('categories')
@@ -28,18 +28,18 @@ export class CategoryController {
   @Get()
   async getAllCategories(
     @Query() query?: QueryPaginationDto,
-  ): Promise<PaginateOutput<CategotyResponseDto>> {
+  ): Promise<PaginateOutput<CategoryResponseDto>> {
     return this.categoryService.getAllCategories(query);
   }
 
   @Get(':id')
-  async getCategoryById(@Param('id') id: string): Promise<CategotyResponseDto> {
+  async getCategoryById(@Param('id') id: string): Promise<CategoryResponseDto> {
     return this.categoryService.getCategoryById(id);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async createCategory(@Body() body: CreateCategoryRequestDto): Promise<CategotyResponseDto> {
+  async createCategory(@Body() body: CreateCategoryRequestDto): Promise<CategoryResponseDto> {
     return this.categoryService.createCategory(body);
   }
 
@@ -48,7 +48,7 @@ export class CategoryController {
   async updateCategory(
     @Param('id') id: string,
     @Body() body: UpdateCategoryRequestDto,
-  ): Promise<CategotyResponseDto> {
+  ): Promise<CategoryResponseDto> {
     return this.categoryService.updateCategory(id, body);
   }
 
