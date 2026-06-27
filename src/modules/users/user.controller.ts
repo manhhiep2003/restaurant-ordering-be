@@ -12,7 +12,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  //@UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async getAllUsers(@Query() query?: QueryPaginationDto): Promise<PaginateOutput<User>> {
     return this.userService.getAllUsers(query);
   }
