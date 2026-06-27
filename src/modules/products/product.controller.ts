@@ -19,6 +19,9 @@ import { ProductService } from 'src/modules/products/product.service';
 import { CreateProductRequestDto } from 'src/modules/products/dtos/request/create-product.request.dto';
 import { UpdateProductRequestDto } from 'src/modules/products/dtos/request/update-product.request.dto';
 import { ProductResponseDto } from 'src/modules/products/dtos/response/product.response.dto';
+import { Role } from '@prisma/client';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiBearerAuth()
 @Controller('products')
@@ -38,13 +41,15 @@ export class ProductController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async createProduct(@Body() body: CreateProductRequestDto): Promise<ProductResponseDto> {
     return this.productService.createProduct(body);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async updateProduct(
     @Param('id') id: string,
     @Body() body: UpdateProductRequestDto,
@@ -53,7 +58,8 @@ export class ProductController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteProduct(@Param('id') id: string): Promise<void> {
     return this.productService.deleteProduct(id);

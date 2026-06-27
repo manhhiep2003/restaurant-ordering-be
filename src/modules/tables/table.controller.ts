@@ -19,6 +19,9 @@ import { TableService } from 'src/modules/tables/table.service';
 import { CreateTableRequestDto } from 'src/modules/tables/dtos/request/create-table.request.dto';
 import { UpdateTableRequestDto } from 'src/modules/tables/dtos/request/update-table.request.dto';
 import { TableResponseDto } from 'src/modules/tables/dtos/response/table.response.dto';
+import { Role } from '@prisma/client';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
 
 @ApiBearerAuth()
 @Controller('tables')
@@ -38,13 +41,15 @@ export class TableController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async createTable(@Body() body: CreateTableRequestDto): Promise<TableResponseDto> {
     return this.tableService.createTable(body);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async updateTable(
     @Param('id') id: string,
     @Body() body: UpdateTableRequestDto,

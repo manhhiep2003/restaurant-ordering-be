@@ -19,6 +19,9 @@ import { CategoryService } from 'src/modules/categories/category.service';
 import { CreateCategoryRequestDto } from 'src/modules/categories/dtos/request/create-category.request.dto';
 import { UpdateCategoryRequestDto } from 'src/modules/categories/dtos/request/update-category.request.dto';
 import { CategoryResponseDto } from 'src/modules/categories/dtos/response/category.response.dto';
+import { Role } from '@prisma/client';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiBearerAuth()
 @Controller('categories')
@@ -38,13 +41,15 @@ export class CategoryController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async createCategory(@Body() body: CreateCategoryRequestDto): Promise<CategoryResponseDto> {
     return this.categoryService.createCategory(body);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   async updateCategory(
     @Param('id') id: string,
     @Body() body: UpdateCategoryRequestDto,
@@ -53,7 +58,8 @@ export class CategoryController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteCategory(@Param('id') id: string): Promise<void> {
     return this.categoryService.deleteCategory(id);
