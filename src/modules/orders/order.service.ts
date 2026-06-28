@@ -5,12 +5,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderRequestDto } from 'src/modules/orders/dtos/request/create-order.request.dto';
 import { OrderResponseDto } from 'src/modules/orders/dtos/response/order.response.dto';
 import { OrderMapper } from 'src/modules/orders/mappers/order.mapper';
+import { OrderGateway } from 'src/modules/orders/order.gateway';
 
 @Injectable()
 export class OrderService {
   constructor(
     private prismaService: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private orderGateway: OrderGateway,
   ) {}
 
   async createOrder(data: CreateOrderRequestDto): Promise<OrderResponseDto> {
@@ -84,6 +86,8 @@ export class OrderService {
         table: true, // Lấy tên Bàn ra (VD: "Bàn 01")
       },
     });
+
+    this.orderGateway.broadcastNewOrder(newOrder);
 
     return OrderMapper.toResponse(newOrder);
   }
