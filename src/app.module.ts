@@ -10,6 +10,7 @@ import { ProductModule } from 'src/modules/products/product.module';
 import { TableModule } from 'src/modules/tables/table.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
+import { OrderModule } from 'src/modules/orders/order.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import KeyvRedis from '@keyv/redis';
     CategoryModule,
     ProductModule,
     TableModule,
+    OrderModule,
   ],
   controllers: [AppController],
   providers: [AppService],
