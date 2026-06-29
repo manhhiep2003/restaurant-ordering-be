@@ -6,6 +6,7 @@ import { CreateOrderRequestDto } from 'src/modules/orders/dtos/request/create-or
 import { OrderResponseDto } from 'src/modules/orders/dtos/response/order.response.dto';
 import { OrderMapper } from 'src/modules/orders/mappers/order.mapper';
 import { OrderGateway } from 'src/modules/orders/order.gateway';
+import { UpdateOrderStatusRequestDto } from 'src/modules/orders/dtos/request/update-order-status.request.dto';
 
 @Injectable()
 export class OrderService {
@@ -90,5 +91,25 @@ export class OrderService {
     this.orderGateway.broadcastNewOrder(newOrder);
 
     return OrderMapper.toResponse(newOrder);
+  }
+
+  async updateOrderStatus(
+    id: string,
+    data: UpdateOrderStatusRequestDto,
+  ): Promise<OrderResponseDto> {
+    const updatedOrder = await this.prismaService.order.update({
+      where: { id },
+      data: { status: data.status },
+      include: {
+        table: true,
+        orderItems: {
+          include: { product: true },
+        },
+      },
+    });
+
+    this.orderGateway.server.emit('onOrderStatusChanged', updatedOrder);
+
+    return OrderMapper.toResponse(updatedOrder);
   }
 }
