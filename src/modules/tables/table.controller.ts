@@ -29,6 +29,7 @@ export class TableController {
   constructor(private readonly tableService: TableService) {}
 
   @Get()
+  @HttpCode(HttpStatus.OK)
   async getAllTables(
     @Query() query?: QueryPaginationDto,
   ): Promise<PaginateOutput<TableResponseDto>> {
@@ -36,11 +37,13 @@ export class TableController {
   }
 
   @Get(':id')
+  @HttpCode(HttpStatus.OK)
   async getTableById(@Param('id') id: string): Promise<TableResponseDto> {
     return this.tableService.getTableById(id);
   }
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async createTable(@Body() body: CreateTableRequestDto): Promise<TableResponseDto> {
@@ -48,6 +51,7 @@ export class TableController {
   }
 
   @Patch(':id')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async updateTable(
@@ -62,5 +66,26 @@ export class TableController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteTable(@Param('id') id: string): Promise<void> {
     return this.tableService.deleteTable(id);
+  }
+
+  @Post(':id/open')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.STAFF)
+  @HttpCode(HttpStatus.OK)
+  async openTable(@Param('id') id: string): Promise<TableResponseDto> {
+    return this.tableService.openTable(id);
+  }
+
+  @Post(':id/close')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.STAFF)
+  @HttpCode(HttpStatus.OK)
+  async closeTable(@Param('id') id: string): Promise<TableResponseDto> {
+    return this.tableService.closeTable(id);
+  }
+
+  @Get(':id/status')
+  async checkTableStatus(@Param('id') id: string): Promise<{ isOpen: boolean }> {
+    return this.tableService.checkTableStatus(id);
   }
 }
