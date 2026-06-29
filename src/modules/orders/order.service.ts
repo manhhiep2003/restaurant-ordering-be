@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -7,6 +13,7 @@ import { OrderResponseDto } from 'src/modules/orders/dtos/response/order.respons
 import { OrderMapper } from 'src/modules/orders/mappers/order.mapper';
 import { OrderGateway } from 'src/modules/orders/order.gateway';
 import { UpdateOrderStatusRequestDto } from 'src/modules/orders/dtos/request/update-order-status.request.dto';
+import { OrderStatus, TableStatus } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
@@ -111,5 +118,98 @@ export class OrderService {
     this.orderGateway.server.emit('onOrderStatusChanged', updatedOrder);
 
     return OrderMapper.toResponse(updatedOrder);
+  }
+
+  async getBillByTable(tableId: string) {
+    // Kiểm tra bàn có tồn tại không
+    const table = await this.prismaService.table.findUnique({ where: { id: tableId } });
+    if (!table) throw new NotFoundException('Không tìm thấy bàn yêu cầu');
+
+    const activeOrders = await this.prismaService.order.findMany({
+      where: {
+        tableId: tableId,
+        status: { in: [OrderStatus.PENDING, OrderStatus.COOKING, OrderStatus.SERVED] },
+      },
+      include: {
+        orderItems: {
+          include: { product: true },
+        },
+      },
+    });
+
+    // Gom tất cả các món ăn từ nhiều đơn hàng khác nhau lại làm một danh sách tổng
+    const billItemsMap = new Map<
+      string,
+      { productName: string; quantity: number; unitPrice: number; total: number }
+    >();
+    let grandTotalPrice = 0;
+
+    for (const order of activeOrders) {
+      for (const item of order.orderItems) {
+        const existing = billItemsMap.get(item.productId);
+        const itemTotal = Number(item.unitPrice) * item.quantity;
+        grandTotalPrice += itemTotal;
+
+        if (existing) {
+          existing.quantity += item.quantity;
+          existing.total += itemTotal;
+        } else {
+          billItemsMap.set(item.productId, {
+            productName: item.product.name,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            total: itemTotal,
+          });
+        }
+      }
+    }
+
+    // Trả về cấu trúc hóa đơn chi tiết cho Frontend vẽ giao diện
+    return {
+      table: { id: table.id, name: table.name },
+      items: Array.from(billItemsMap.values()),
+      grandTotal: grandTotalPrice,
+      orderCount: activeOrders.length, // Số lượt khách bấm gọi món
+    };
+  }
+
+  async checkoutTable(tableId: string) {
+    // Kiểm tra xem bàn có hóa đơn nào cần thanh toán không
+    const bill = await this.getBillByTable(tableId);
+    if (bill.orderCount === 0) {
+      throw new BadRequestException('Bàn này hiện không có đơn hàng nào cần thanh toán');
+    }
+
+    const redisKey = `table_session:${tableId}`;
+
+    // Chạy Transaction đồng bộ cả Postgres và Redis
+    await this.prismaService.$transaction(async (tx) => {
+      // Bước A: Cập nhật tất cả đơn hàng bận của bàn này sang PAID
+      await tx.order.updateMany({
+        where: {
+          tableId: tableId,
+          status: { in: [OrderStatus.PENDING, OrderStatus.COOKING, OrderStatus.SERVED] },
+        },
+        data: { status: OrderStatus.PAID },
+      });
+
+      // Bước B: Chuyển trạng thái bàn về AVAILABLE (Trống) trong PostgreSQL
+      await tx.table.update({
+        where: { id: tableId },
+        data: { status: TableStatus.AVAILABLE },
+      });
+    });
+
+    // Bước C: Xóa sạch phiên ăn của khách trên Cloud Redis
+    await this.cacheManager.del(redisKey);
+
+    // Bước D: BẮN SOCKET REALTIME để thông báo cho toàn hệ thống
+    // Toàn bộ iPad Sơ đồ bàn của Phục vụ sẽ lập tức chuyển bàn này sang màu Xanh Lá
+    this.orderGateway.server.emit('onTableStatusChanged', {
+      tableId,
+      status: TableStatus.AVAILABLE,
+    });
+
+    return { message: 'Thanh toán thành công!' };
   }
 }
