@@ -47,6 +47,11 @@ export class OrderController {
     return this.orderService.getBillByTable(tableId);
   }
 
+  @Get('public/table/:tableId/bill')
+  getPublicBill(@Param('tableId') tableId: string) {
+    return this.orderService.getBillByTable(tableId);
+  }
+
   @Post('table/:tableId/checkout')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.ADMIN)

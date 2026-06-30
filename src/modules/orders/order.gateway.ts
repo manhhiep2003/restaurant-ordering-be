@@ -3,6 +3,8 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  MessageBody,
+  SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
@@ -19,14 +21,23 @@ export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private logger = new Logger('OrderGateway');
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client đã kết nối: ${client.id}`);
+    this.logger.log(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Client đã ngắt kết nối: ${client.id}`);
+    this.logger.log(`Client disconnected: ${client.id}`);
   }
 
   broadcastNewOrder(orderData: any) {
     this.server.emit('onNewOrder', orderData);
+  }
+
+  @SubscribeMessage('callStaff')
+  handleCallStaff(@MessageBody() data: { tableId: string; tableName: string }) {
+    this.server.emit('onCallStaff', {
+      tableId: data.tableId,
+      tableName: data.tableName,
+      time: new Date().toLocaleTimeString(),
+    });
   }
 }
