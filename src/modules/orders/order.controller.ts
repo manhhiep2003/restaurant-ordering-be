@@ -30,32 +30,32 @@ export class OrderController {
     return this.orderService.createOrder(body);
   }
 
-  @Patch(':id/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.KITCHEN, Role.ADMIN)
-  async updateOrderStatus(
-    @Param('id') id: string,
-    @Body() body: UpdateOrderStatusRequestDto,
-  ): Promise<OrderResponseDto> {
-    return this.orderService.updateOrderStatus(id, body);
-  }
+  // @Patch(':id/status')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(Role.KITCHEN, Role.ADMIN)
+  // async updateOrderStatus(
+  //   @Param('id') id: string,
+  //   @Body() body: UpdateOrderStatusRequestDto,
+  // ): Promise<OrderResponseDto> {
+  //   return this.orderService.updateOrderStatus(id, body);
+  // }
 
-  @Get('table/:tableId/bill')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.STAFF, Role.ADMIN)
-  getBill(@Param('tableId') tableId: string) {
-    return this.orderService.getBillByTable(tableId);
-  }
+  // @Get('table/:tableId/bill')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(Role.STAFF, Role.ADMIN)
+  // getBill(@Param('tableId') tableId: string) {
+  //   return this.orderService.getBillByTable(tableId);
+  // }
 
-  @Get('public/table/:tableId/bill')
-  getPublicBill(@Param('tableId') tableId: string) {
-    return this.orderService.getBillByTable(tableId);
-  }
+  // @Get('public/table/:tableId/bill')
+  // getPublicBill(@Param('tableId') tableId: string) {
+  //   return this.orderService.getBillByTable(tableId);
+  // }
 
-  @Post('table/:tableId/checkout')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.STAFF, Role.ADMIN)
-  checkout(@Param('tableId') tableId: string) {
-    return this.orderService.checkoutTable(tableId);
-  }
+  // @Post('table/:tableId/checkout')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(Role.STAFF, Role.ADMIN)
+  // checkout(@Param('tableId') tableId: string) {
+  //   return this.orderService.checkoutTable(tableId);
+  // }
 }

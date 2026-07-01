@@ -11,6 +11,7 @@ import { TableModule } from 'src/modules/tables/table.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
 import { OrderModule } from 'src/modules/orders/order.module';
+import { DiningSessionModule } from 'src/modules/dining-sessions/dining-session.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { OrderModule } from 'src/modules/orders/order.module';
     ProductModule,
     TableModule,
     OrderModule,
+    DiningSessionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -26,8 +26,20 @@ enum OrderStatus {
   PENDING
   COOKING
   SERVED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  VNPAY
+  MOMO
+}
+
+enum InvoiceStatus {
+  PENDING
   PAID
   CANCELLED
+  REFUNDED
 }
 
 model User {
@@ -49,7 +61,7 @@ model Table {
   createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  orders Order[]
+  sessions DiningSession[]
 
   @@map("tables")
 }
@@ -72,6 +84,7 @@ model Product {
   price       Decimal   @db.Decimal(10, 2)
   imageUrl    String?   @map("image_url") @db.Text
   isAvailable Boolean   @default(true) @map("is_available")
+  isBuffet    Boolean   @default(false) @map("is_buffet")
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -81,15 +94,33 @@ model Product {
   @@map("products")
 }
 
+model DiningSession {
+  id           String    @id @default(uuid())
+  tableId      String    @map("table_id")
+  customerName String?   @map("customer_name") @db.VarChar(100)
+  startTime    DateTime  @default(now()) @map("start_time") @db.Timestamptz(3)
+  endTime      DateTime? @map("end_time") @db.Timestamptz(3)
+  isClosed     Boolean   @default(false) @map("is_closed") // Kiểm soát phiên ăn đã checkout chưa
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime? @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  table    Table     @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  orders   Order[] // Một phiên ăn khách có thể nhấn "Gửi bếp" nhiều lần
+  invoice  Invoice? // Một phiên ăn chỉ có duy nhất 1 hóa đơn chốt tiền
+  feedback Feedback? // Một phiên ăn chỉ có duy nhất 1 lượt đánh giá
+
+  @@map("dining_sessions")
+}
+
 model Order {
   id         String      @id @default(uuid())
-  tableId    String      @map("table_id")
+  sessionId  String      @map("session_id")
   status     OrderStatus @default(PENDING)
   totalPrice Decimal     @default(0) @map("total_price") @db.Decimal(10, 2)
   createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  table      Table       @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
 
   @@map("orders")
@@ -109,4 +140,33 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@map("order_items")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  sessionId     String        @unique @map("session_id") // 1-1 với DiningSession
+  amount        Decimal       @db.Decimal(10, 2) // Tiền hàng trước thuế
+  taxAmount     Decimal?      @default(0) @map("tax_amount") @db.Decimal(10, 2) // Tiền thuế VAT (nếu có)
+  finalAmount   Decimal       @map("final_amount") @db.Decimal(10, 2) // Tổng tiền khách phải trả thực tế
+  status        InvoiceStatus @default(PENDING)
+  paymentMethod PaymentMethod @default(CASH) @map("payment_method")
+  transactionId String?       @map("transaction_id") @db.VarChar(100) // Mã đối soát từ cổng VNPay/Momo
+  paidAt        DateTime?     @map("paid_at") @db.Timestamptz(3)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  session DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@map("invoices")
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  sessionId String   @unique @map("session_id") // 1-1 với DiningSession
+  rating    Int      @db.SmallInt
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  session DiningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("feedbacks")
 }

@@ -42,12 +42,12 @@ export class OrderItemDto {
 // Payload tạo đơn hàng
 export class CreateOrderRequestDto {
   @ApiProperty({
-    description: 'ID của bàn đang gọi món',
+    description: 'ID của session bàn đang gọi món',
     example: '9d4b8d14-7e5f-4b35-86b3-0c28dff7e1d4',
   })
   @IsUUID()
   @IsNotEmpty()
-  tableId: string;
+  sessionId: string;
 
   @ApiProperty({
     description: 'Danh sách món ăn khách đặt',

@@ -17,4 +17,7 @@ export class ProductResponseDto extends BaseResponseDto {
 
   @ApiResponseProperty()
   isAvailable: boolean;
+
+  @ApiResponseProperty()
+  isBuffet: boolean;
 }
