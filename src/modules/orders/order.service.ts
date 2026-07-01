@@ -7,7 +7,7 @@ import { OrderResponseDto } from 'src/modules/orders/dtos/response/order.respons
 import { OrderMapper } from 'src/modules/orders/mappers/order.mapper';
 import { OrderGateway } from 'src/modules/orders/order.gateway';
 import { UpdateOrderStatusRequestDto } from 'src/modules/orders/dtos/request/update-order-status.request.dto';
-import { OrderStatus, TableStatus } from '@prisma/client';
+import { InvoiceStatus, OrderStatus, PaymentMethod, TableStatus } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
@@ -97,116 +97,139 @@ export class OrderService {
     return OrderMapper.toResponse(newOrder);
   }
 
-  // async updateOrderStatus(
-  //   id: string,
-  //   data: UpdateOrderStatusRequestDto,
-  // ): Promise<OrderResponseDto> {
-  //   const updatedOrder = await this.prismaService.order.update({
-  //     where: { id },
-  //     data: { status: data.status },
-  //     include: {
-  //       table: true,
-  //       orderItems: {
-  //         include: { product: true },
-  //       },
-  //     },
-  //   });
+  async updateOrderStatus(
+    id: string,
+    data: UpdateOrderStatusRequestDto,
+  ): Promise<OrderResponseDto> {
+    const updatedOrder = await this.prismaService.order.update({
+      where: { id },
+      data: { status: data.status },
+      include: {
+        orderItems: {
+          include: { product: true },
+        },
+      },
+    });
 
-  //   this.orderGateway.server.emit('onOrderStatusChanged', updatedOrder);
+    this.orderGateway.server.emit('onOrderStatusChanged', updatedOrder);
 
-  //   return OrderMapper.toResponse(updatedOrder);
-  // }
+    return OrderMapper.toResponse(updatedOrder);
+  }
 
-  // async getBillByTable(tableId: string) {
-  //   // Kiểm tra bàn có tồn tại không
-  //   const table = await this.prismaService.table.findUnique({ where: { id: tableId } });
-  //   if (!table) throw new NotFoundException('Không tìm thấy bàn yêu cầu');
+  async getBillByTable(tableId: string) {
+    // 1. Tìm phiên ăn đang mở (isClosed: false) của bàn này
+    const activeSession = await this.prismaService.diningSession.findFirst({
+      where: { tableId: tableId, isClosed: false },
+    });
 
-  //   const activeOrders = await this.prismaService.order.findMany({
-  //     where: {
-  //       tableId: tableId,
-  //       status: { in: [OrderStatus.PENDING, OrderStatus.COOKING, OrderStatus.SERVED] },
-  //     },
-  //     include: {
-  //       orderItems: {
-  //         include: { product: true },
-  //       },
-  //     },
-  //   });
+    if (!activeSession) {
+      throw new BadRequestException('Bàn này hiện không có phiên ăn nào đang hoạt động');
+    }
 
-  //   // Gom tất cả các món ăn từ nhiều đơn hàng khác nhau lại làm một danh sách tổng
-  //   const billItemsMap = new Map<
-  //     string,
-  //     { productName: string; quantity: number; unitPrice: number; total: number }
-  //   >();
-  //   let grandTotalPrice = 0;
+    const table = await this.prismaService.table.findUnique({ where: { id: tableId } });
+    if (!table) throw new NotFoundException('Không tìm thấy bàn yêu cầu');
 
-  //   for (const order of activeOrders) {
-  //     for (const item of order.orderItems) {
-  //       const existing = billItemsMap.get(item.productId);
-  //       const itemTotal = Number(item.unitPrice) * item.quantity;
-  //       grandTotalPrice += itemTotal;
+    const activeOrders = await this.prismaService.order.findMany({
+      where: {
+        sessionId: activeSession.id,
+        status: { in: [OrderStatus.PENDING, OrderStatus.COOKING, OrderStatus.SERVED] },
+      },
+      include: {
+        orderItems: {
+          include: { product: true },
+        },
+      },
+    });
 
-  //       if (existing) {
-  //         existing.quantity += item.quantity;
-  //         existing.total += itemTotal;
-  //       } else {
-  //         billItemsMap.set(item.productId, {
-  //           productName: item.product.name,
-  //           quantity: item.quantity,
-  //           unitPrice: Number(item.unitPrice),
-  //           total: itemTotal,
-  //         });
-  //       }
-  //     }
-  //   }
+    // Gom tất cả các món ăn từ nhiều đơn hàng khác nhau lại làm một danh sách tổng
+    const billItemsMap = new Map<
+      string,
+      { productName: string; quantity: number; unitPrice: number; total: number }
+    >();
+    let grandTotalPrice = 0;
 
-  //   // Trả về cấu trúc hóa đơn chi tiết cho Frontend vẽ giao diện
-  //   return {
-  //     table: { id: table.id, name: table.name },
-  //     items: Array.from(billItemsMap.values()),
-  //     grandTotal: grandTotalPrice,
-  //     orderCount: activeOrders.length, // Số lượt khách bấm gọi món
-  //   };
-  // }
+    for (const order of activeOrders) {
+      for (const item of order.orderItems) {
+        const existing = billItemsMap.get(item.productId);
+        const itemTotal = Number(item.unitPrice) * item.quantity;
+        grandTotalPrice += itemTotal;
 
-  // async checkoutTable(tableId: string) {
-  //   // Kiểm tra xem bàn có hóa đơn nào cần thanh toán không
-  //   const bill = await this.getBillByTable(tableId);
-  //   if (bill.orderCount === 0) {
-  //     throw new BadRequestException('Bàn này hiện không có đơn hàng nào cần thanh toán');
-  //   }
+        if (existing) {
+          existing.quantity += item.quantity;
+          existing.total += itemTotal;
+        } else {
+          billItemsMap.set(item.productId, {
+            productName: item.product.name,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            total: itemTotal,
+          });
+        }
+      }
+    }
 
-  //   const redisKey = `table_session:${tableId}`;
+    // Trả về cấu trúc hóa đơn chi tiết cho Frontend vẽ giao diện
+    return {
+      table: { id: table.id, name: table.name },
+      items: Array.from(billItemsMap.values()),
+      grandTotal: grandTotalPrice,
+      orderCount: activeOrders.length, // Số lượt khách bấm gọi món
+    };
+  }
 
-  //   // Chạy Transaction đồng bộ cả Postgres và Redis
-  //   await this.prismaService.$transaction(async (tx) => {
-  //     // Bước A: Cập nhật tất cả đơn hàng bận của bàn này sang PAID
-  //     await tx.order.updateMany({
-  //       where: {
-  //         tableId: tableId,
-  //         status: { in: [OrderStatus.PENDING, OrderStatus.COOKING, OrderStatus.SERVED] },
-  //       },
-  //       data: { status: OrderStatus.PAID },
-  //     });
+  async checkoutTable(tableId: string) {
+    // 1. Tìm phiên ăn đang chạy
+    const activeSession = await this.prismaService.diningSession.findFirst({
+      where: { tableId: tableId, isClosed: false },
+    });
+    if (!activeSession) throw new BadRequestException('Không có phiên ăn nào để thanh toán');
 
-  //     // Bước B: Chuyển trạng thái bàn về AVAILABLE (Trống) trong PostgreSQL
-  //     await tx.table.update({
-  //       where: { id: tableId },
-  //       data: { status: TableStatus.AVAILABLE },
-  //     });
-  //   });
+    // Kiểm tra xem bàn có hóa đơn nào cần thanh toán không
+    const bill = await this.getBillByTable(tableId);
+    if (bill.orderCount === 0) {
+      throw new BadRequestException('Bàn này hiện không có đơn hàng nào cần thanh toán');
+    }
 
-  //   // Bước C: Xóa sạch phiên ăn của khách trên Cloud Redis
-  //   await this.cacheManager.del(redisKey);
+    const redisKey = `table_session:${tableId}`;
 
-  //   // Bước D: BẮN SOCKET REALTIME để thông báo cho toàn hệ thống
-  //   // Toàn bộ iPad Sơ đồ bàn của Phục vụ sẽ lập tức chuyển bàn này sang màu Xanh Lá
-  //   this.orderGateway.server.emit('onTableStatusChanged', {
-  //     tableId,
-  //     status: TableStatus.AVAILABLE,
-  //   });
+    await this.prismaService.$transaction(async (tx) => {
+      // BƯỚC MỚI: Đóng phiên ăn
+      await tx.diningSession.update({
+        where: { id: activeSession.id },
+        data: {
+          isClosed: true,
+          endTime: new Date(),
+        },
+      });
 
-  //   return { message: 'Thanh toán thành công!' };
-  // }
+      // BƯỚC MỚI: Sinh ra Invoice (Hóa đơn lưu vĩnh viễn)
+      await tx.invoice.create({
+        data: {
+          sessionId: activeSession.id,
+          amount: bill.grandTotal,
+          finalAmount: bill.grandTotal,
+          status: InvoiceStatus.PAID,
+          paymentMethod: PaymentMethod.CASH,
+        },
+      });
+
+      // Đổi trạng thái Bàn về AVAILABLE
+      await tx.table.update({
+        where: { id: tableId },
+        data: { status: TableStatus.AVAILABLE },
+      });
+    });
+
+    // Bước C: Xóa sạch phiên ăn của khách trên Cloud Redis
+    await this.cacheManager.del(redisKey);
+
+    // Bước D: BẮN SOCKET REALTIME để thông báo cho toàn hệ thống
+    // Toàn bộ iPad Sơ đồ bàn của Phục vụ sẽ lập tức chuyển bàn này sang màu Xanh Lá
+    this.orderGateway.server.emit('onTableStatusChanged', {
+      tableId,
+      status: TableStatus.AVAILABLE,
+    });
+
+    return { message: 'Thanh toán thành công!' };
+  }
 }

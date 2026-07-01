@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { DiningSessionRequestDto } from 'src/modules/dining-sessions/dtos/request/dining-session.request.dto';
+import { TableStatus } from '@prisma/client';
 
 @Injectable()
 export class DiningSessionService {
@@ -20,10 +21,7 @@ export class DiningSessionService {
 
     // 1. Kiểm tra trên cache Redis xem bàn này đã có phiên ăn chưa
     const cachedSessionId = await this.cacheManager.get<string>(redisKey);
-    console.log('redisKey:', redisKey);
-    console.log('cachedSessionId:', cachedSessionId);
-    console.log('typeof:', typeof cachedSessionId);
-    console.log('JSON:', JSON.stringify(cachedSessionId));
+
     if (cachedSessionId) {
       return { sessionId: cachedSessionId, isNew: false };
     }
@@ -33,7 +31,7 @@ export class DiningSessionService {
     if (!table) throw new NotFoundException('Không tìm thấy bàn này trong hệ thống');
 
     // Trường hợp: Bàn đang OCCUPIED nhưng Redis bị mất cache (do restart hoặc hết hạn)
-    if (table.status === 'OCCUPIED') {
+    if (table.status === TableStatus.OCCUPIED) {
       const activeSession = await this.prisma.diningSession.findFirst({
         where: { tableId: data.tableId, isClosed: false },
         orderBy: { startTime: 'desc' },
@@ -48,7 +46,7 @@ export class DiningSessionService {
       // Nếu trạng thái bàn bận nhưng không tìm thấy session bận -> Dữ liệu xung đột, ép về trống để xử lý tiếp
       await this.prisma.table.update({
         where: { id: data.tableId },
-        data: { status: 'AVAILABLE' },
+        data: { status: TableStatus.AVAILABLE },
       });
     }
 
@@ -66,7 +64,7 @@ export class DiningSessionService {
       // Bước B: Chuyển trạng thái bàn sang OCCUPIED
       await tx.table.update({
         where: { id: data.tableId },
-        data: { status: 'OCCUPIED' },
+        data: { status: TableStatus.OCCUPIED },
       });
 
       return session;
