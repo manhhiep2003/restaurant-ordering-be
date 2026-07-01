@@ -1,10 +1,11 @@
-import { RegisterRequestDto } from './dtos/register.request.dto';
+import { RegisterRequestDto } from './dtos/request/register.request.dto';
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { LoginRequestDto } from 'src/modules/auth/dtos/login.request.dto';
+import { LoginRequestDto } from 'src/modules/auth/dtos/request/login.request.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
+import { LoginResponseDto } from 'src/modules/auth/dtos/response/login.response.dto';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +14,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async login(loginRequestDto: LoginRequestDto): Promise<any> {
+  async login(loginRequestDto: LoginRequestDto): Promise<LoginResponseDto> {
     const { username, password } = loginRequestDto;
 
     const user = await this.prismaService.user.findUnique({
@@ -30,12 +31,22 @@ export class AuthService {
       throw new UnauthorizedException('Invalid username or password.');
     }
 
+    const token = this.jwtService.sign({
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+    });
+
     return {
-      token: this.jwtService.sign({
-        sub: user.id,
+      token,
+      user: {
+        id: user.id,
         username: user.username,
+        fullName: user.fullName,
         role: user.role,
-      }),
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     };
   }
 

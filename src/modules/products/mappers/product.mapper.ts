@@ -10,6 +10,7 @@ export class ProductMapper {
       price: product.price,
       imageUrl: product.imageUrl,
       isAvailable: product.isAvailable,
+      isBuffet: product.isBuffet,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     };

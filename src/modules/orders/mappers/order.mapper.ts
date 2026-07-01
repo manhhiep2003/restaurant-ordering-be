@@ -5,10 +5,9 @@ export class OrderMapper {
   static toResponse(order: OrderWithDetails): OrderResponseDto {
     return {
       id: order.id,
+      sessionId: order.sessionId,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
-      tableId: order.tableId,
-      tableName: order.table.name,
       status: order.status,
       totalPrice: Number(order.totalPrice),
       orderItems: order.orderItems.map((item) => ({

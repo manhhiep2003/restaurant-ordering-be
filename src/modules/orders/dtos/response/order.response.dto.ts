@@ -5,10 +5,7 @@ import { BaseResponseDto } from 'src/common/dtos/base-response.dto';
 
 export class OrderResponseDto extends BaseResponseDto {
   @ApiResponseProperty()
-  tableId: string;
-
-  @ApiResponseProperty()
-  tableName: string;
+  sessionId: string;
 
   @ApiResponseProperty()
   status: OrderStatus;
